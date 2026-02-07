@@ -1,0 +1,13 @@
+---
+description: Core agent workflow and safety rules
+alwaysApply: false
+---
+# Agent workflow (always)
+
+- Follow `agent.md` in the repo root.
+- Prefer working in the **repo root**. Don’t create new top-level project folders unless the user explicitly asks.
+- Make **minimal, focused diffs**; match existing patterns.
+- Don’t add secrets; use placeholders + document required env vars.
+- Don’t create git commits unless explicitly requested.
+- When you change behavior, include a **test plan** (tests run or manual steps).
+
