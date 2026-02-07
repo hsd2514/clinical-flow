@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import OpenAI from "openai";
 
 const SUMMARY_SYSTEM_PROMPT = `
@@ -37,6 +38,11 @@ function extractMessageText(content) {
 
 export async function POST(req) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
     const visitData = body?.visitData || {};
 

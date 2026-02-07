@@ -1,6 +1,12 @@
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
+async function requireAuth(ctx) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) throw new Error("Unauthorized");
+  return identity;
+}
+
 export const saveConsultation = mutation({
   args: {
     patientId: v.id("patients"),
@@ -17,6 +23,7 @@ export const saveConsultation = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    await requireAuth(ctx);
     return await ctx.db.insert("consultations", args);
   },
 });

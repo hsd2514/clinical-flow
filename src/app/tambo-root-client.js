@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { useAuth } from "@clerk/nextjs";
+import { ConvexReactClient } from "convex/react";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { TamboProvider } from "@tambo-ai/react";
 import { components } from "@/lib/tambo";
 
@@ -19,7 +21,7 @@ export default function TamboRootClient({ children }) {
   }
 
   return (
-    <ConvexProvider client={convex}>
+    <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
       {tamboApiKey ? (
         <TamboProvider apiKey={tamboApiKey} components={components} tools={[]}>
           {children}
@@ -27,7 +29,7 @@ export default function TamboRootClient({ children }) {
       ) : (
         children
       )}
-    </ConvexProvider>
+    </ConvexProviderWithClerk>
   );
 }
 

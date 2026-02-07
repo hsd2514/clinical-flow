@@ -25,6 +25,12 @@ Requirements:
 const FASTROUTER_BASE_URL = "https://go.fastrouter.ai/api/v1";
 const SUMMARY_MODEL = "z-ai/glm-4.7";
 
+async function requireAuth(ctx) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) throw new Error("Unauthorized");
+  return identity;
+}
+
 function extractMessageText(content) {
   if (typeof content === "string") return content.trim();
   if (!Array.isArray(content)) return "";
@@ -100,6 +106,7 @@ export const generateUI = action({
     context: v.optional(v.any()), // Extra context like selected body part
   },
   handler: async (ctx, args) => {
+    await requireAuth(ctx);
     const text = args.input.toLowerCase();
     const uiPlan = [];
     const patientId = args.patientId;
@@ -598,6 +605,7 @@ export const generateDischargeSummary = action({
     visitData: v.any(), // The collected state from frontend
   },
   handler: async (ctx, args) => {
+    await requireAuth(ctx);
     const { visitData } = args;
     const patient =
       visitData?.patient ||

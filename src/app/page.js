@@ -1,7 +1,15 @@
 "use client";
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery, useConvexAuth } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import {
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+  useAuth,
+} from "@clerk/nextjs";
 // Tambo AI Hooks for dynamic component generation
 import { useTamboThread, useTamboThreadInput } from "@tambo-ai/react";
 // Clinical Context for component data collection
@@ -156,6 +164,11 @@ export default function ClinicalFlowDashboard() {
   const [savedEncounters, setSavedEncounters] = useState([]);
   const [currentScenario, setCurrentScenario] = useState("initial");
   const [sidebarTab, setSidebarTab] = useState("patient"); // "patient" | "history" | "scribe"
+  const { isLoaded, userId } = useAuth();
+  const {
+    isAuthenticated: isConvexAuthenticated,
+    isLoading: isConvexAuthLoading,
+  } = useConvexAuth();
 
   // ============ TAMBO AI HOOKS ============
   const {
@@ -184,7 +197,11 @@ export default function ClinicalFlowDashboard() {
   const tamboMessages = thread?.messages || [];
 
   // Data Fetching
-  const patients = useQuery(api.queries.getPatients) || [];
+  const patients =
+    useQuery(
+      api.queries.getPatients,
+      userId && isConvexAuthenticated ? undefined : "skip",
+    ) || [];
 
   useEffect(() => {
     if (patients.length > 0 && !selectedPatientId) {
@@ -210,8 +227,33 @@ export default function ClinicalFlowDashboard() {
   const history =
     useQuery(
       api.queries.getHistory,
-      selectedPatientId ? { patientId: selectedPatientId } : "skip",
+      selectedPatientId && userId && isConvexAuthenticated
+        ? { patientId: selectedPatientId }
+        : "skip",
     ) || [];
+
+  const consultations =
+    useQuery(
+      api.queries.getConsultations,
+      selectedPatientId && userId && isConvexAuthenticated
+        ? { patientId: selectedPatientId }
+        : "skip",
+    ) || [];
+
+  const displayedEncounters =
+    consultations.length > 0
+      ? consultations.map((c) => ({
+          id: c._id,
+          patientId: c.patientId,
+          patientName: activePatient?.name || "Patient",
+          savedAt: c.date,
+          messageCount: 1,
+          diagnosis: c.diagnosis,
+        }))
+      : savedEncounters.map((enc) => ({
+          ...enc,
+          messageCount: Array.isArray(enc.messages) ? enc.messages.length : 0,
+        }));
 
   const changePatient = (id) => {
     setSelectedPatientId(id);
@@ -749,6 +791,79 @@ export default function ClinicalFlowDashboard() {
     }
   };
 
+  if (!isLoaded) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gradient-clinical">
+        <div className="card-clinical p-6 text-sm text-muted-foreground">
+          Loading authentication...
+        </div>
+      </div>
+    );
+  }
+
+  if (!userId) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gradient-clinical p-6">
+        <div className="w-full max-w-md card-clinical p-8">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Stethoscope className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold text-foreground">
+                ClinicalFlow Access
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                Sign in to access the clinical demo workspace
+              </p>
+            </div>
+          </div>
+
+          <div className="mb-5 p-3 rounded-xl border border-primary/30 bg-primary/5 text-sm">
+            <div className="font-semibold text-foreground">
+              Demo authentication enabled with Clerk
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Use Sign In or Sign Up to continue.
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <SignInButton mode="modal">
+              <button className="btn-clinical btn-primary w-full">Sign In</button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <button className="btn-clinical btn-ghost w-full">Sign Up</button>
+            </SignUpButton>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isConvexAuthLoading || !isConvexAuthenticated) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gradient-clinical p-6">
+        <div className="w-full max-w-xl card-clinical p-8 space-y-4">
+          <h1 className="text-lg font-semibold text-foreground">
+            Completing Convex Authentication
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Signed in to Clerk, but Convex token is missing. Create a Clerk JWT
+            template named <code className="font-mono">convex</code> and set
+            Convex env <code className="font-mono">CLERK_JWT_ISSUER_DOMAIN</code>
+            to your Clerk issuer domain.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Current browser error{" "}
+            <code className="font-mono">/tokens/convex 404</code> means that
+            template does not exist yet.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (!patients.length || !activePatient) {
     return (
       <div className="h-screen flex items-center justify-center bg-gradient-clinical">
@@ -1003,19 +1118,20 @@ export default function ClinicalFlowDashboard() {
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                   Session History
                 </h4>
-                {savedEncounters.length === 0 ? (
+                {displayedEncounters.length === 0 ? (
                   <div className="text-center py-8">
                     <History className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground">
                       No saved encounters yet
                     </p>
                     <p className="text-xs text-muted-foreground/70 mt-1">
-                      Click &quot;Save&quot; during a session to keep records
+                      Click &quot;End Visit &amp; Scribe&quot; or &quot;Save&quot;
+                      during a session to keep records
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {savedEncounters.map((enc) => (
+                    {displayedEncounters.map((enc) => (
                       <div
                         key={enc.id}
                         className="card-clinical p-4 hover:border-primary/50 cursor-pointer transition-all"
@@ -1032,7 +1148,7 @@ export default function ClinicalFlowDashboard() {
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {enc.messages.length} messages recorded
+                          {enc.messageCount} messages recorded
                         </p>
                       </div>
                     ))}
@@ -1051,7 +1167,7 @@ export default function ClinicalFlowDashboard() {
                       </span>
                       <span className="font-semibold text-foreground">
                         {
-                          savedEncounters.filter(
+                          displayedEncounters.filter(
                             (e) => e.patientId === activePatient._id,
                           ).length
                         }
@@ -1060,10 +1176,9 @@ export default function ClinicalFlowDashboard() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Last Visit</span>
                       <span className="font-semibold text-foreground">
-                        {savedEncounters.length > 0
+                        {displayedEncounters.length > 0
                           ? new Date(
-                              savedEncounters[savedEncounters.length - 1]
-                                .savedAt,
+                              displayedEncounters[0].savedAt,
                             ).toLocaleDateString()
                           : "N/A"}
                       </span>
@@ -1239,6 +1354,19 @@ export default function ClinicalFlowDashboard() {
               >
                 <Trash2 className="w-4 h-4" />
               </button>
+
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <button className="btn-clinical btn-ghost gap-2">
+                    Sign In
+                  </button>
+                </SignInButton>
+              </SignedOut>
+              <SignedIn>
+                <div className="ml-1">
+                  <UserButton afterSignOutUrl="/" />
+                </div>
+              </SignedIn>
 
               <button
                 onClick={handleEndVisit}

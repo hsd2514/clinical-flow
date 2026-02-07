@@ -1,4 +1,5 @@
 import { DM_Sans, JetBrains_Mono, Playfair_Display } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import TamboRootClient from "./tambo-root-client";
 
@@ -30,12 +31,14 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="scroll-smooth">
-      <body
-        className={`${dmSans.variable} ${playfair.variable} ${jetbrainsMono.variable} font-sans antialiased`}
-      >
-        <TamboRootClient>{children}</TamboRootClient>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" className="scroll-smooth">
+        <body
+          className={`${dmSans.variable} ${playfair.variable} ${jetbrainsMono.variable} font-sans antialiased`}
+        >
+          <TamboRootClient>{children}</TamboRootClient>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

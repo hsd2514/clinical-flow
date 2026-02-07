@@ -77,17 +77,21 @@ Doctors suffer from **"Click Fatigue"** — navigating through endless static fo
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/clinicalflow.git
-cd clinicalflow
+git clone https://github.com/hsd2514/clinical-flow.git
+cd clinical-flow
 
 # Install dependencies
 npm install
 
 # Configure environment
 # .env.local
+# NEXT_PUBLIC_CONVEX_URL=...
+# NEXT_PUBLIC_TAMBO_API_KEY=...
+# TAMBO_API_KEY=...
 # FASTROUTER_API_KEY=your_key_here
 # ENABLE_AI_SUMMARY=true
-# (Keep TAMBO_API_KEY/NEXT_PUBLIC_TAMBO_API_KEY for frontend Tambo features)
+# NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=...
+# CLERK_SECRET_KEY=...
 
 # Start Convex backend
 npx convex dev
@@ -104,6 +108,31 @@ npx convex run seed:seed
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to see the app.
+
+---
+
+## 🔐 Auth (Clerk + Convex)
+
+This project uses **Clerk (App Router)** for frontend auth and **Convex auth checks** on backend functions.
+
+- Clerk middleware is configured in `src/proxy.ts`
+- App is wrapped with `ClerkProvider` in `src/app/layout.js`
+- Convex client uses `ConvexProviderWithClerk` in `src/app/tambo-root-client.js`
+
+For Convex JWT validation, set this env in Convex:
+
+- `CLERK_JWT_ISSUER_DOMAIN=https://<your-clerk-domain>`
+
+And create a Clerk JWT template:
+
+- Template name: `convex`
+- Audience (`aud`): `convex`
+
+Then push functions:
+
+```bash
+npx convex dev --once
+```
 
 ---
 
